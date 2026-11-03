@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Casa Smart MQTT</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF2F4;--surface:#FFFFFF;--surface2:#E6ECEF;--ink:#13202B;--muted:#60717D;--line:#D8E0E5;--shadow:0 6px 20px -12px rgba(19,32,43,.35);
+--display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;--body:"DM Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1218;--surface:#151F28;--surface2:#1E2A35;--ink:#EAF1F5;--muted:#8FA1AE;--line:#243441;--shadow:0 6px 20px -12px #000;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0B1218;--surface:#151F28;--surface2:#1E2A35;--ink:#EAF1F5;--muted:#8FA1AE;--line:#243441;--shadow:0 6px 20px -12px #000;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+.app{max-width:480px;margin:0 auto;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+button:focus-visible,input:focus-visible{outline:3px solid #4DA3FF;outline-offset:2px}
+h1,h2,.num{font-family:var(--display);margin:0}
+.hero{background:radial-gradient(120% 90% at 100% 0%,#2D5C8F 0%,transparent 55%),linear-gradient(165deg,#0F3F3C,#10243A 65%,#1A1B3C);color:#fff;padding:22px 18px 74px;border-radius:0 0 32px 32px}
+.hero .row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.hero h1{font-size:2.1rem;font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.hero p{margin:6px 0 0;opacity:.75;text-transform:capitalize}
+.sec{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:8px 14px;font-weight:600;font-size:.88rem;white-space:nowrap}
+.sec i{width:9px;height:9px;border-radius:50%;background:#34D399;box-shadow:0 0 0 4px rgba(52,211,153,.3)}
+.sec.warn i{background:#F87171;box-shadow:0 0 0 4px rgba(248,113,113,.35)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:-52px 16px 0;position:relative}
+.stat{background:var(--surface);border-radius:20px;padding:14px 12px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.stat .num{font-size:1.5rem;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.stat small{display:block;color:var(--muted);font-size:.78rem;margin-top:4px}
+main{padding:22px 16px 0}
+h2{font-size:1.3rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px}
+.lead{margin:0 0 14px;color:var(--muted);font-size:.92rem}
+.view[hidden]{display:none}
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.qbtn{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;font-weight:600;min-height:54px;box-shadow:var(--shadow)}
+.qbtn:active,.scene:active{transform:scale(.97)}
+.rooms{display:flex;gap:8px;overflow-x:auto;padding:2px 0 14px;scrollbar-width:none}
+.rooms::-webkit-scrollbar{display:none}
+.room{flex:none;padding:10px 18px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-weight:600}
+.room[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--surface);border:2px solid var(--line);border-radius:24px;padding:14px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow);transition:border-color .25s,box-shadow .25s}
+.tile.on{border-color:var(--c);box-shadow:0 10px 26px -12px var(--c)}
+.tile.wide{grid-column:span 2}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%}
+.ico{width:50px;height:50px;border-radius:16px;background:var(--surface2);color:var(--muted);display:grid;place-items:center;transition:background .25s,color .25s;flex:none}
+.tile.on .ico{background:var(--c);color:var(--ci)}
+.name{font-weight:700;line-height:1.2}
+.st{font-size:.88rem;color:var(--muted);margin-top:2px}
+.tile.on .st{color:var(--ink);opacity:.8}
+.sw{width:52px;height:32px;border-radius:16px;background:var(--surface2);border:1px solid var(--line);position:relative;transition:background .2s;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:var(--muted);transition:transform .2s,background .2s}
+.sw[aria-checked="true"]{background:var(--c);border-color:var(--c)}
+.sw[aria-checked="true"]::after{transform:translateX(20px);background:var(--ci)}
+input[type=range]{width:100%;height:30px;margin:0;accent-color:var(--c)}
+.ctrl{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.step{width:52px;height:52px;border-radius:16px;background:var(--surface2);font-size:1.6rem;font-weight:600}
+.step:active{background:var(--line)}
+.temp{font-family:var(--display);font-size:2.6rem;font-weight:800;letter-spacing:-.03em}
+.act{width:100%;text-align:left;display:flex;align-items:center;gap:12px}
+.scenes{display:grid;gap:12px}
+.scene{display:flex;align-items:center;gap:14px;text-align:left;border-radius:24px;padding:18px;color:#fff;min-height:92px;box-shadow:var(--shadow);transition:transform .12s}
+.scene .ico{background:rgba(255,255,255,.2);color:#fff;width:56px;height:56px}
+.scene b{font-family:var(--display);font-size:1.2rem;display:block}
+.scene span{opacity:.88;font-size:.9rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+.chart{display:flex;align-items:flex-end;gap:6px;height:130px;margin-top:14px}
+.chart div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
+.chart i{display:block;width:100%;border-radius:8px 8px 4px 4px;background:var(--surface2);min-height:6px}
+.chart div:last-child i{background:#4DA3FF}
+.chart small{font-size:.68rem;color:var(--muted)}
+.li{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.li:first-of-type{border-top:0}
+.li .ico{width:40px;height:40px;border-radius:12px}
+.li .li-m{flex:1}
+.li .bar{height:6px;border-radius:3px;background:var(--surface2);margin-top:6px;overflow:hidden}
+.li .bar i{display:block;height:100%;border-radius:3px}
+.empty{color:var(--muted);padding:16px 0}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 60%,transparent)}
+.tabs .in{display:flex;width:100%;max-width:456px;background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:6px;box-shadow:0 10px 30px -10px rgba(0,0,0,.45)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;border-radius:20px;font-size:.78rem;font-weight:600;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.toast{position:fixed;left:50%;bottom:calc(98px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:14px;font-weight:600;font-size:.92rem;opacity:0;pointer-events:none;transition:all .25s;max-width:90%;z-index:6;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+:root:root:root{--bg:#050B14;--surface:rgba(14,28,48,.72);--surface2:rgba(130,200,255,.09);--ink:#E8F4FF;--muted:#8CA6BD;--line:rgba(110,200,255,.18);--shadow:0 12px 30px -16px rgba(0,200,255,.4);color-scheme:dark}
+body{background:radial-gradient(70% 45% at 85% 0%,rgba(0,150,255,.28),transparent 70%),radial-gradient(60% 40% at 0% 35%,rgba(120,70,255,.18),transparent 70%),radial-gradient(50% 35% at 100% 80%,rgba(0,220,200,.12),transparent 70%),#050B14;background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:linear-gradient(to bottom,#000 0%,transparent 75%);mask-image:linear-gradient(to bottom,#000 0%,transparent 75%)}
+.hero{background:linear-gradient(180deg,rgba(0,170,255,.14),transparent);border-radius:0;padding-bottom:70px;overflow:hidden}
+.brand{display:flex;align-items:center;gap:8px;font-family:var(--display);font-weight:800;font-size:.95rem;color:#19D3FF;margin-bottom:10px}
+.brand i{width:8px;height:8px;border-radius:50%;background:#19D3FF;box-shadow:0 0 12px 3px rgba(25,211,255,.7)}
+.house{display:block;width:100%;max-width:340px;height:auto;margin:6px auto 0}
+.house .fl{animation:flow 2.4s linear infinite}
+.house .pr{transform-box:fill-box;transform-origin:center;animation:ping 2.4s ease-out infinite}
+@keyframes flow{to{stroke-dashoffset:-20}}
+@keyframes ping{0%{transform:scale(.6);opacity:.9}100%{transform:scale(2.6);opacity:0}}
+.stat,.tile,.card,.qbtn,.room,.tabs .in{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.stat .num{background:linear-gradient(90deg,#fff,#7FE3FF);-webkit-background-clip:text;background-clip:text;color:transparent}
+.room[aria-pressed="true"],.tab[aria-selected="true"]{background:#19D3FF;color:#00212B;border-color:#19D3FF}
+.sec{background:rgba(25,211,255,.12);border-color:rgba(25,211,255,.35)}
+@media (min-width:640px){.app{max-width:760px}.grid{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:900px){
+.app{max-width:none;margin:0;padding:0 36px 48px 256px}
+.app>*{max-width:1120px;margin-left:auto;margin-right:auto}
+nav.tabs{top:0;bottom:0;right:auto;width:220px;justify-content:flex-start;align-items:flex-start;padding:26px 14px;background:rgba(8,18,32,.78);border-right:1px solid var(--line);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+nav.tabs::before{content:"Casa Smart";position:absolute;top:26px;left:30px;font-family:var(--display);font-weight:800;font-size:1.2rem;color:#19D3FF}
+.tabs .in{flex-direction:column;gap:6px;background:transparent;border:0;box-shadow:none;padding:0;margin-top:56px;max-width:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+.tab{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;padding:13px 16px;font-size:.98rem;border-radius:14px}
+.tab:hover:not([aria-selected="true"]){background:var(--surface2);color:var(--ink)}
+.hero{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:24px;margin-top:24px;padding:34px 40px 96px;border-radius:30px;border:1px solid var(--line)}
+.hero .row{flex-direction:column;align-items:flex-start;gap:18px}
+.hero h1{font-size:3.2rem}
+.brand{display:none}
+.house{max-width:440px;margin:0 0 0 auto}
+.stats{margin:-60px 40px 0;gap:16px}
+.stat{padding:20px}.stat .num{font-size:2.1rem}
+main{padding:32px 0 0}
+h2{font-size:1.6rem}
+.grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.tile.wide{grid-column:span 2}
+.tile:hover{transform:translateY(-3px)}
+.tile{transition:border-color .25s,box-shadow .25s,transform .15s}
+.quick{grid-template-columns:repeat(2,minmax(0,260px))}
+.qbtn:hover,.room:hover{border-color:#19D3FF}
+.scenes{grid-template-columns:repeat(2,1fr);gap:16px}
+.scene:hover{transform:translateY(-3px)}
+#v-energia:not([hidden]){display:grid;grid-template-columns:3fr 2fr;gap:16px;align-items:start}
+#v-energia h2,#v-energia .lead{grid-column:1/-1}
+#v-energia .card{margin:0}
+.chart{height:240px}
+.toast{bottom:28px;left:calc(50% + 110px)}
+}
+@media (prefers-reduced-motion:reduce){.house .fl,.house .pr{animation:none}}
+[hidden]{display:none!important}
+.lockscr{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:radial-gradient(70% 45% at 50% 0%,rgba(0,150,255,.3),transparent 70%),#050B14}
+.lk{width:100%;max-width:320px;text-align:center}
+.lkb{font-family:var(--display);font-weight:800;font-size:1.8rem;color:#19D3FF;margin-bottom:10px}
+.lk p{color:var(--muted);margin:0 0 18px}
+.dots{display:flex;justify-content:center;gap:14px;margin-bottom:22px}
+.dots i{width:16px;height:16px;border-radius:50%;border:2px solid #19D3FF}
+.dots i.f{background:#19D3FF;box-shadow:0 0 12px rgba(25,211,255,.8)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center}
+.pad button{width:72px;height:72px;border-radius:50%;background:var(--surface2);border:1px solid var(--line);font-family:var(--display);font-size:1.6rem;font-weight:700}
+.pad button:active{background:#19D3FF;color:#00212B}
+.err{color:#F87171!important;min-height:1.4em;margin:16px 0 0!important}
+.modal{position:fixed;inset:0;z-index:25;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.65)}
+.mb{background:#0E1C30;border:1px solid var(--line);border-radius:24px;padding:22px;max-width:340px;width:100%;text-align:center}
+.mb p{font-family:var(--display);font-size:1.25rem;font-weight:700;margin:0 0 18px}
+.mrow{display:flex;gap:10px}
+.mbtn{flex:1;min-height:50px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);font-weight:600;padding:0 16px}
+.mbtn.pri{background:#19D3FF;color:#00212B;border-color:#19D3FF}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;align-items:end}
+.form label{display:grid;gap:6px;font-size:.85rem;color:var(--muted)}
+select,input[type=time]{background:var(--surface2);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:0 12px;font:inherit;min-height:48px;width:100%}
+.x{width:40px;height:40px;border-radius:12px;background:var(--surface2);font-size:1.3rem;flex:none}
+#v-agenda .card{max-width:780px}
+#lkc{margin-top:14px;width:100%}
+select{color-scheme:dark;font-size:1rem;font-weight:500}
+select option{background:#0E1C30;color:#FFFFFF;font-size:1rem;padding:8px}
+select optgroup{background:#08121F;color:#19D3FF;font-weight:700;font-style:normal}
+.rt{display:flex;align-items:center;gap:8px;flex:none}
+.lockbtn{width:42px;height:42px;border-radius:50%;background:rgba(25,211,255,.12);border:1px solid rgba(25,211,255,.4);color:#fff;display:grid;place-items:center;flex:none;transition:background .2s}
+.lockbtn:hover,.lockbtn:active{background:#19D3FF;color:#00212B}
+.qoff{grid-column:1/-1;justify-content:center;background:rgba(248,113,113,.14);border-color:#F87171;color:#FFC2C2}
+.qoff:hover{background:#F87171;color:#2A0505}
+.mst{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.mst i{width:12px;height:12px;border-radius:50%;background:#F87171;box-shadow:0 0 10px rgba(255,255,255,.35)}
+.form input[type=text],.form input[type=number],.form input[type=password]{background:var(--surface2);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:0 12px;font:inherit;min-height:48px;width:100%}
+#v-mqtt .card{max-width:780px}
+.lockbtn.dang:hover,.lockbtn.dang:active{background:#F87171;color:#2A0505;border-color:#F87171}
+@media (max-width:430px){.rt{gap:6px}.lockbtn{width:38px;height:38px}.sec{padding:8px 10px;font-size:.8rem}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+</head>
+<body>
+<div class="app">
+<header class="hero">
+  <div class="row">
+    <div><div class="brand"><i></i>Casa Smart</div><h1 id="hi">Olá</h1><p id="date"></p></div>
+    <div class="rt"><button class="lockbtn dang" data-a="delacc" aria-label="Excluir conta e criar outra" title="Excluir conta"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5"/></svg></button><button class="lockbtn" data-a="lockn" aria-label="Bloquear e voltar à tela do PIN" title="Voltar ao PIN"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></button><div class="sec" id="sec"><i></i><span id="sect">Casa trancada</span></div></div>
+  </div>
+  <svg class="house" viewBox="0 0 400 160" fill="none" aria-hidden="true">
+    <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19D3FF"/><stop offset="1" stop-color="#8B6BFF"/></linearGradient>
+    <filter id="gl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <ellipse cx="200" cy="140" rx="170" ry="14" stroke="#19D3FF" stroke-opacity=".3"/>
+    <ellipse cx="200" cy="140" rx="120" ry="9" stroke="#19D3FF" stroke-opacity=".2"/>
+    <g filter="url(#gl)" stroke="url(#hg)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M110 135V88L200 42l90 46v47z" fill="rgba(25,211,255,.08)"/>
+      <path d="M110 112h180M200 112v23" stroke-opacity=".6"/>
+      <rect x="232" y="114" width="22" height="21" rx="3"/>
+      <rect x="130" y="118" width="36" height="10" rx="2" stroke-opacity=".6"/>
+      <path d="M185 24a22 22 0 0 1 30 0M191 30a13 13 0 0 1 18 0"/>
+    </g>
+    <g stroke="#19D3FF" stroke-opacity=".7" stroke-dasharray="4 6" stroke-width="1.5"><path class="fl" d="M200 36L152 98"/><path class="fl" d="M200 36L248 98"/><path class="fl" d="M200 36L200 76"/></g>
+    <g fill="#19D3FF"><circle cx="200" cy="36" r="3"/><circle cx="152" cy="98" r="4"/><circle cx="248" cy="98" r="4"/><circle cx="200" cy="76" r="4" fill="#FFC24A"/></g>
+    <g stroke="#19D3FF" stroke-width="1.5"><circle class="pr" cx="152" cy="98" r="4"/><circle class="pr" cx="248" cy="98" r="4" style="animation-delay:.8s"/><circle class="pr" cx="200" cy="76" r="4" stroke="#FFC24A" style="animation-delay:1.6s"/></g>
+  </svg>
+</header>
+<section class="stats" aria-live="polite">
+  <div class="stat"><div class="num" id="n-on">0</div><small>Ligados</small></div>
+  <div class="stat"><div class="num" id="n-w">0 W</div><small>Consumo agora</small></div>
+  <div class="stat"><div class="num" id="n-t">23°</div><small>Temperatura</small></div>
+</section>
+
+<main>
+<section class="view" id="v-casa">
+  <h2>Minha casa</h2>
+  <p class="lead">Toque em um item para ligar ou desligar.</p>
+  <div class="quick">
+    <button class="qbtn" data-a="alloff"><span id="q1"></span>Apagar luzes</button>
+    <button class="qbtn" data-a="lockall"><span id="q2"></span>Trancar tudo</button>
+    <button class="qbtn qoff" data-a="housoff"><span id="q3"></span>Desligar a casa toda</button>
+  </div>
+  <nav class="rooms" id="rooms" aria-label="Cômodos"></nav>
+  <div class="grid" id="grid"></div>
+</section>
+<section class="view" id="v-cenas" hidden>
+  <h2>Cenas</h2>
+  <p class="lead">Um toque ajusta vários itens de uma vez.</p>
+  <div class="scenes" id="scenes"></div>
+</section>
+<section class="view" id="v-agenda" hidden>
+  <h2>Agenda</h2>
+  <p class="lead">Programe horários para ligar, desligar e trancar sozinho. Funciona enquanto esta página estiver aberta.</p>
+  <div class="card"><b>Novo agendamento</b>
+    <div class="form"><label>Item<select id="sd"></select></label><label>Ação<select id="sa"></select></label><label>Horário<input type="time" id="stm" value="19:00"></label><button class="mbtn pri" data-a="sadd">Adicionar</button></div></div>
+  <div class="card"><b>Agendamentos</b><div id="slist"></div></div>
+  <div class="card"><b>Segurança</b><p class="lead" style="margin:8px 0 12px">Troque o PIN ou bloqueie o painel agora.</p><div class="mrow"><button class="mbtn" data-a="chpin">Alterar PIN</button><button class="mbtn" data-a="lockn">Bloquear agora</button></div></div>
+  <div class="card"><b>Atividade recente</b><div id="hist"></div></div>
+</section>
+<section class="view" id="v-mqtt" hidden>
+  <h2>Conexão MQTT</h2>
+  <p class="lead">Conecte ao seu broker para controlar o ESP32 de verdade.</p>
+  <div class="card">
+    <div class="mst"><i id="mdot"></i><b id="mtxt">Desconectado</b></div>
+    <div class="form">
+      <label>Nome do dispositivo<input type="text" id="m-name" autocomplete="off"></label>
+      <label>Servidor (host)<input type="text" id="m-host" autocomplete="off"></label>
+      <label>Porta WebSocket (wss)<input type="number" id="m-port"></label>
+      <label>Caminho<input type="text" id="m-path" autocomplete="off"></label>
+      <label>Usuário<input type="text" id="m-user" autocomplete="off"></label>
+      <label>Senha<input type="password" id="m-pass" autocomplete="off"></label>
+      <label>Tópico de assinatura<input type="text" id="m-sub" autocomplete="off"></label>
+      <label>Tópico de publicação<input type="text" id="m-pub" autocomplete="off"></label>
+      <button class="mbtn pri" data-a="mconn">Conectar</button>
+      <button class="mbtn" data-a="mdisc">Desconectar</button>
+    </div>
+  </div>
+  <div class="card"><b>Mensagens recebidas</b><div id="mlog"></div></div>
+</section>
+<section class="view" id="v-energia" hidden>
+  <h2>Consumo de energia</h2>
+  <p class="lead">Quanto sua casa gasta ao longo do dia.</p>
+  <div class="card"><b>Últimas 12 horas</b><div class="chart" id="chart"></div></div>
+  <div class="card"><b>O que mais gasta agora</b><div id="top"></div></div>
+</section>
+</main>
+</div>
+
+<div class="lockscr" id="lockscr" hidden><div class="lk"><div class="lkb">Casa Smart</div><p id="lkmsg"></p><div class="dots" id="dots"></div><div class="pad" id="pad"></div><p class="err" id="perr" role="alert"></p><button class="mbtn" id="lkc" data-a="lkc" hidden>Cancelar</button></div></div>
+<div class="modal" id="modal" hidden><div class="mb"><p id="mq"></p><div class="mrow"><button class="mbtn" data-a="no">Cancelar</button><button class="mbtn pri" data-a="yes">Confirmar</button></div></div></div>
+<nav class="tabs" aria-label="Seções"><div class="in" role="tablist" id="tabs"></div></nav>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+var I={
+light:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/>',
+ac:'<path d="M12 2v20M4 7l16 10M4 17L20 7"/>',
+tv:'<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/>',
+lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+unlock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/>',
+blinds:'<path d="M4 4h16M4 8h16M4 12h16M12 12v6"/>',
+plug:'<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/>',
+fan:'<circle cx="12" cy="12" r="2"/><path d="M12 10c0-4 1-7 4-7 2 0 2 3 0 5M14 12c4 0 7 1 7 4 0 2-3 2-5 0M12 14c0 4-1 7-4 7-2 0-2-3 0-5M10 12c-4 0-7-1-7-4 0-2 3-2 5 0"/>',
+home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+moon:'<path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10z"/>',
+film:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 15h18M8 4v16M16 4v16"/>',
+out:'<path d="M9 21H5V3h4M16 17l5-5-5-5M21 12H9"/>',
+play:'<path d="M6 4l14 8-14 8z"/>',
+bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+power:'<path d="M12 2v10M6.3 6.3a8 8 0 1 0 11.4 0"/>',
+wifi:'<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/>'};
+function svg(k,s){return '<svg width="'+(s||24)+'" height="'+(s||24)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+I[k]+'</svg>'}
+var COL={light:['#F5B53B','#2B1B00'],ac:['#4DA3FF','#00233F'],plug:['#A78BFA','#1E1245'],lock:['#34D399','#04281C'],blinds:['#F0A87A','#3A1A05']};
+
+var DEF=[
+{id:'s1',room:'Sala',t:'light',n:'Luz principal',on:true,v:80},
+{id:'s2',room:'Sala',t:'ac',n:'Ar-condicionado',on:false,v:23},
+{id:'s3',room:'Sala',t:'plug',n:'Televisão',on:false,ic:'tv',w:110},
+{id:'s4',room:'Sala',t:'blinds',n:'Cortina',v:60},
+{id:'c1',room:'Cozinha',t:'light',n:'Luz da cozinha',on:false,v:100},
+{id:'c2',room:'Cozinha',t:'plug',n:'Cafeteira',on:false,w:800},
+{id:'q1',room:'Quarto',t:'light',n:'Luz do quarto',on:false,v:40},
+{id:'q2',room:'Quarto',t:'plug',n:'Ventilador',on:false,ic:'fan',w:45},
+{id:'q3',room:'Quarto',t:'blinds',n:'Persiana',v:100},
+{id:'e1',room:'Entrada',t:'lock',n:'Porta da frente',on:true},
+{id:'e2',room:'Entrada',t:'light',n:'Luz externa',on:false,v:100},
+{id:'esp1',room:'ESP32',t:'plug',n:'ESP32',on:false,ic:'plug',w:5,mqtt:true}
+];
+var KEY='casa-v2',D,room='Todos',view='casa';
+try{D=JSON.parse(localStorage.getItem(KEY))}catch(e){D=null}
+if(!Array.isArray(D)||D.length!==DEF.length)D=JSON.parse(JSON.stringify(DEF));
+function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}msync()}
+function get(id){return D.filter(function(d){return d.id===id})[0]}
+function $(i){return document.getElementById(i)}
+function set(id,p){var d=get(id);for(var k in p)d[k]=p[k]}
+var toastT;
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('show')},1900)}
+
+function wat(d){if(d.t==='light')return d.on?Math.round(10*d.v/100):0;if(d.t==='ac')return d.on?Math.round(1000-(d.v-16)*30):0;if(d.t==='plug')return d.on?d.w:0;return 0}
+function watts(){return D.reduce(function(s,d){return s+wat(d)},60)}
+function fmt(w){return w>=1000?(w/1000).toFixed(1).replace('.',',')+' kW':w+' W'}
+function st(d){
+  if(d.t==='light')return d.on?'Ligada · '+d.v+'%':'Apagada';
+  if(d.t==='ac')return d.on?'Ligado · mantendo '+d.v+'°C':'Desligado';
+  if(d.t==='lock')return d.on?'Trancada':'Destrancada · toque para trancar';
+  if(d.t==='blinds')return d.v===0?'Fechada':d.v===100?'Totalmente aberta':'Aberta '+d.v+'%';
+  return d.on?'Ligado':'Desligado';
+}
+
+var SC=[
+{n:'Cheguei em casa',s:'Destranca a porta, acende a sala e liga o ar',i:'home',g:'linear-gradient(135deg,#0F766E,#14B8A6)',f:function(){set('e1',{on:false});set('s1',{on:true,v:80});set('s2',{on:true,v:23});set('s4',{v:60})}},
+{n:'Hora de dormir',s:'Apaga tudo, tranca a porta e fecha as cortinas',i:'moon',g:'linear-gradient(135deg,#3B2F8F,#6D5BD0)',f:function(){D.forEach(function(d){if(d.t==='light'||d.t==='plug'||d.t==='ac')d.on=false});set('e1',{on:true});set('s4',{v:0});set('q3',{v:0});set('q2',{on:true})}},
+{n:'Cinema',s:'Luz baixa, TV ligada e cortina fechada',i:'film',g:'linear-gradient(135deg,#B4308B,#F0645A)',f:function(){set('s1',{on:true,v:15});set('s3',{on:true});set('s4',{v:0})}},
+{n:'Saí de casa',s:'Desliga tudo e tranca a porta',i:'out',g:'linear-gradient(135deg,#1D4F91,#3E8BE8)',f:function(){D.forEach(function(d){if(d.t!=='blinds'&&d.t!=='lock')d.on=false});set('e1',{on:true});set('s4',{v:0});set('q3',{v:0})}}
+];
+
+function sw(d,c){return '<span class="sw" aria-hidden="true" data-c="'+c+'"></span>'}
+function tile(d){
+  var c=COL[d.t],isOn=d.t==='blinds'?d.v>0:d.on,ic=d.ic||(d.t==='ac'?'ac':d.t==='lock'?(d.on?'lock':'unlock'):d.t),h;
+  if(d.t==='lock'){c=d.on?COL.lock:['#F87171','#3A0707'];isOn=true}
+  var cls='tile'+(isOn?' on':'')+(d.t==='ac'?' wide':'');
+  var head=function(label){return '<button class="top" data-a="tog" data-id="'+d.id+'" aria-label="'+label+' '+d.n+'"><span class="ico">'+svg(ic)+'</span>'+(d.t==='lock'?'':'<span class="sw" role="switch" aria-checked="'+!!d.on+'"></span>')+'</button>'};
+  var info='<div><div class="name">'+d.n+'</div><div class="st" data-st>'+st(d)+'</div></div>';
+  if(d.t==='light')h=head('Ligar ou apagar')+info+'<input type="range" min="5" max="100" value="'+d.v+'" data-a="rng" data-id="'+d.id+'" aria-label="Brilho"'+(d.on?'':' disabled')+'>';
+  else if(d.t==='ac')h=head('Ligar ou desligar')+info+'<div class="ctrl"><button class="step" data-a="dn" data-id="'+d.id+'" aria-label="Diminuir temperatura">−</button><div class="temp">'+d.v+'°C</div><button class="step" data-a="up" data-id="'+d.id+'" aria-label="Aumentar temperatura">+</button></div>';
+  else if(d.t==='blinds')h='<div class="top"><span class="ico">'+svg('blinds')+'</span><span class="st">'+d.v+'%</span></div>'+info+'<input type="range" min="0" max="100" step="10" value="'+d.v+'" data-a="rng" data-id="'+d.id+'" aria-label="Abertura">';
+  else h=head('Ligar ou desligar')+info;
+  return '<article class="'+cls+'" style="--c:'+c[0]+';--ci:'+c[1]+'">'+h+'</article>';
+}
+
+function header(){
+  var h=new Date().getHours();
+  $('hi').textContent=h<5?'Boa madrugada':h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';
+  $('date').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  var n=D.filter(function(d){return d.t!=='blinds'&&d.t!=='lock'&&d.on}).length;
+  $('n-on').textContent=n;$('n-w').textContent=fmt(watts());
+  var ac=get('s2');$('n-t').textContent=(ac.on?ac.v:24)+'°';
+  var open=D.some(function(d){return d.t==='lock'&&!d.on});
+  $('sec').classList.toggle('warn',open);$('sect').textContent=open?'Porta destrancada':'Casa trancada';
+}
+function renderCasa(){
+  var rs=['Todos'];D.forEach(function(d){if(rs.indexOf(d.room)<0)rs.push(d.room)});
+  $('rooms').innerHTML=rs.map(function(r){return '<button class="room" aria-pressed="'+(r===room)+'" data-a="room" data-r="'+r+'">'+r+'</button>'}).join('');
+  var l=D.filter(function(d){return room==='Todos'||d.room===room});
+  $('grid').innerHTML=l.length?l.map(tile).join(''):'<p class="empty">Nenhum item neste cômodo.</p>';
+}
+function renderEnergia(){
+  var h=new Date().getHours(),base=[210,180,170,190,340,560,440,400,320,280,640],now=watts(),vals=base.concat([now]),mx=Math.max.apply(null,vals);
+  $('chart').innerHTML=vals.map(function(v,i){var hr=(h-11+i+24)%24;return '<div><i style="height:'+Math.max(6,v/mx*100)+'%" title="'+v+' W"></i><small>'+(i===11?'Agora':(hr<10?'0':'')+hr+'h')+'</small></div>'}).join('');
+  var l=D.filter(function(d){return wat(d)>0}).sort(function(a,b){return wat(b)-wat(a)});
+  $('top').innerHTML=l.length?l.map(function(d){var c=COL[d.t];return '<div class="li" style="--c:'+c[0]+';--ci:'+c[1]+'"><span class="ico" style="background:var(--c);color:var(--ci)">'+svg(d.ic||d.t)+'</span><div class="li-m"><b>'+d.n+'</b><div class="bar"><i style="width:'+Math.max(4,wat(d)/1000*100)+'%;background:var(--c)"></i></div></div><span>'+fmt(wat(d))+'</span></div>'}).join(''):'<p class="empty">Nada ligado agora. Só o consumo básico da casa.</p>';
+}
+function renderScenes(){
+  $('scenes').innerHTML=SC.map(function(s,i){return '<button class="scene" style="background:'+s.g+'" data-a="scene" data-i="'+i+'"><span class="ico">'+svg(s.i,28)+'</span><div><b>'+s.n+'</b><span>'+s.s+'</span></div></button>'}).join('');
+}
+function renderTabs(){
+  var T=[['casa','Casa','home'],['cenas','Cenas','play'],['agenda','Agenda','clock'],['energia','Energia','bolt'],['mqtt','Conexão','wifi']];
+  $('tabs').innerHTML=T.map(function(t){return '<button class="tab" role="tab" aria-selected="'+(view===t[0])+'" data-a="view" data-v="'+t[0]+'">'+svg(t[2],22)+t[1]+'</button>'}).join('');
+  ['casa','cenas','agenda','energia','mqtt'].forEach(function(v){$('v-'+v).hidden=v!==view});
+}
+function render(){header();renderCasa();renderEnergia();renderAgenda();renderTabs()}
+
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-a]');if(!b)return;
+  var a=b.dataset.a,d=b.dataset.id&&get(b.dataset.id);
+  if(a==='mconn'){mconn();return}
+  if(a==='mdisc'){if(mc){try{mc.end(true)}catch(e){}mc=null}mset('Desconectado','#F87171');return}
+  if(a==='housoff'){ask('Desligar a casa toda? Luzes, tomadas, TV e ar-condicionado serão desligados.',function(){D.forEach(function(x){if(x.t==='light'||x.t==='plug'||x.t==='ac')x.on=false});log('Casa toda desligada');toast('Casa toda desligada');save();render()});return}
+  if(a==='delacc'){ask('Excluir sua conta? O PIN, os agendamentos e o histórico deste aparelho serão apagados e você vai criar uma nova conta.',function(){try{localStorage.removeItem('casa-pin');localStorage.removeItem('casa-v2');localStorage.removeItem('casa-v2-ag');localStorage.removeItem('casa-mqtt');sessionStorage.removeItem('casa-ok')}catch(e){}D=JSON.parse(JSON.stringify(DEF));S=[{id:'a1',dev:'e2',act:'on',time:'18:00',en:true,last:''},{id:'a2',dev:'e2',act:'off',time:'06:00',en:true,last:''},{id:'a3',dev:'e1',act:'on',time:'22:00',en:true,last:''}];L=[];PIN=null;ok=false;mode='new';first='';pin='';room='Todos';view='casa';msg();dots();$('perr').textContent='';$('lockscr').hidden=false;render()});return}
+  if(a==='chpin'){mode='old';pin='';msg();dots();$('perr').textContent='';$('lockscr').hidden=false;return}
+  if(a==='lkc'){mode='enter';pin='';dots();$('lockscr').hidden=true;return}
+  if(a==='lockn'){ok=false;try{sessionStorage.removeItem('casa-ok')}catch(e){}mode='enter';pin='';msg();dots();$('perr').textContent='';$('lockscr').hidden=false;return}
+  if(a==='pin'){pinKey(b.dataset.k);return}
+  if(a==='yes'||a==='no'){var cb=pend;pend=null;$('modal').hidden=true;if(a==='yes'&&cb)cb();return}
+  if(a==='sadd'){var tm=$('stm').value;if(!tm){toast('Escolha um horário');return}S.push({id:'a'+Date.now(),dev:$('sd').value,act:$('sa').value,time:tm,en:true,last:''});saveA();renderAgenda();toast('Agendamento criado');return}
+  if(a==='sdel'){S=S.filter(function(s){return s.id!==b.dataset.id});saveA();renderAgenda();return}
+  if(a==='stog'){var q=S.filter(function(s){return s.id===b.dataset.id})[0];q.en=!q.en;saveA();renderAgenda();return}
+  if(a==='view'){view=b.dataset.v;window.scrollTo(0,0);render();return}
+  if(a==='room'){room=b.dataset.r;render();return}
+  if(a==='scene'){var s=SC[b.dataset.i];s.f();log('Cena “'+s.n+'” ativada');save();render();toast('Cena “'+s.n+'” ativada');return}
+  if(a==='alloff'){D.forEach(function(x){if(x.t==='light')x.on=false});log('Todas as luzes apagadas');toast('Todas as luzes foram apagadas')}
+  else if(a==='lockall'){D.forEach(function(x){if(x.t==='lock')x.on=true});log('Porta trancada');toast('Porta trancada')}
+  else if(a==='tog'){if(d.t==='lock'&&d.on){ask('Destrancar '+d.n+'?',function(){d.on=false;log(d.n+' destrancada');toast(d.n+': destrancada');save();render()});return}if(d.mqtt&&!(mc&&mc.connected)){toast('MQTT desconectado. Conecte na aba Conexão.');return}d.on=!d.on;log(d.n+' '+lab(d,d.on));toast(d.n+': '+lab(d,d.on))}
+  else if(a==='up'||a==='dn'){d.v=Math.max(16,Math.min(30,d.v+(a==='up'?1:-1)));d.on=true}
+  else return;
+  save();render();
+});
+document.addEventListener('input',function(e){
+  var r=e.target;if(r.dataset.a!=='rng')return;
+  var d=get(r.dataset.id);d.v=+r.value;
+  var t=r.closest('.tile');t.querySelector('[data-st]').textContent=st(d);
+  if(d.t==='blinds'){t.classList.toggle('on',d.v>0);t.querySelector('.top .st').textContent=d.v+'%'}
+  header();
+});
+document.addEventListener('change',function(e){if(e.target.dataset.a==='rng'){save();renderEnergia()}});
+
+document.addEventListener('keydown',function(e){
+  var tg=e.target.tagName;if(tg==='INPUT'||tg==='SELECT'||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(!$('lockscr').hidden){if(/^[0-9]$/.test(e.key))pinKey(e.key);else if(e.key==='Backspace')pinKey('x');return}
+  var m={'1':'casa','2':'cenas','3':'agenda','4':'energia','5':'mqtt'}[e.key];
+  if(m){view=m;window.scrollTo(0,0);render()}
+});
+$('q1').innerHTML=svg('light',22);$('q2').innerHTML=svg('lock',22);$('q3').innerHTML=svg('power',22);
+var AK='casa-v2-ag',S,L,pend=null,PIN=null,pin='',ok=false,mode='enter',first='';
+try{var A=JSON.parse(localStorage.getItem(AK));S=A.S;L=A.L}catch(e){}
+if(!Array.isArray(S))S=[{id:'a1',dev:'e2',act:'on',time:'18:00',en:true,last:''},{id:'a2',dev:'e2',act:'off',time:'06:00',en:true,last:''},{id:'a3',dev:'e1',act:'on',time:'22:00',en:true,last:''}];
+if(!Array.isArray(L))L=[];
+function saveA(){try{localStorage.setItem(AK,JSON.stringify({S:S,L:L}))}catch(e){}}
+function log(m){L.unshift({t:Date.now(),m:m});L=L.slice(0,25);saveA()}
+function lab(d,on){return d.t==='lock'?(on?'trancada':'destrancada'):d.t==='blinds'?(on?'aberta':'fechada'):(on?'ligado':'desligado')}
+function tgt(id){if(id.indexOf('scene:')===0){var sc=SC[+id.slice(6)];return {n:'Cena “'+sc.n+'”',sc:sc}}return get(id)}
+function verb(d,on){return d.sc?'Ativar':d.t==='lock'?(on?'Trancar':'Destrancar'):d.t==='blinds'?(on?'Abrir':'Fechar'):(on?'Ligar':'Desligar')}
+function ask(q,cb){$('mq').textContent=q;pend=cb;$('modal').hidden=false}
+function renderAgenda(){
+  $('slist').innerHTML=S.length?S.map(function(s){var d=tgt(s.dev);return '<div class="li"><div class="li-m"><b>'+verb(d,s.act==='on')+' · '+d.n+'</b><div class="st">Todos os dias às '+s.time+'</div></div><button class="sw" role="switch" aria-checked="'+s.en+'" aria-label="Ativar agendamento" data-a="stog" data-id="'+s.id+'" style="--c:#19D3FF;--ci:#00212B"></button><button class="x" data-a="sdel" data-id="'+s.id+'" aria-label="Excluir agendamento">×</button></div>'}).join(''):'<p class="empty">Nenhum agendamento. Crie o primeiro acima.</p>';
+  $('hist').innerHTML=L.length?L.slice(0,10).map(function(x){return '<div class="li"><div class="li-m">'+x.m+'</div><span class="st">'+new Date(x.t).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</span></div>'}).join(''):'<p class="empty">Nada aconteceu ainda.</p>';
+}
+function tick(){var n=new Date(),hm=('0'+n.getHours()).slice(-2)+':'+('0'+n.getMinutes()).slice(-2),k=n.toDateString()+hm,ch=false;
+  S.forEach(function(s){if(s.en&&s.time===hm&&s.last!==k){s.last=k;var d=tgt(s.dev),on=s.act==='on';if(d.sc){d.sc.f();log('Agenda: cena “'+d.sc.n+'” ativada');toast('Agenda: '+d.n+' ativada')}else{if(d.t==='blinds')d.v=on?100:0;else d.on=on;if(d.t==='ac'&&on&&!d.v)d.v=23;log('Agenda: '+d.n+' '+lab(d,on));toast('Agenda: '+d.n+' '+lab(d,on))}ch=true}});
+  if(ch){save();saveA();render()}}
+setInterval(tick,15000);
+(function(){var h='',rs=[];D.forEach(function(d){if(rs.indexOf(d.room)<0)rs.push(d.room)});
+rs.forEach(function(r){h+='<optgroup label="'+r+'">'+D.filter(function(d){return d.room===r}).map(function(d){return '<option value="'+d.id+'">'+d.n+'</option>'}).join('')+'</optgroup>'});
+h+='<optgroup label="Cenas">'+SC.map(function(s,i){return '<option value="scene:'+i+'">Cena “'+s.n+'”</option>'}).join('')+'</optgroup>';$('sd').innerHTML=h})();
+function acts(){var d=tgt($('sd').value);$('sa').innerHTML='<option value="on">'+verb(d,true)+'</option>'+(d.sc?'':'<option value="off">'+verb(d,false)+'</option>')}
+$('sd').addEventListener('change',acts);acts();
+try{sessionStorage.removeItem('casa-ok')}catch(e){}
+try{PIN=localStorage.getItem('casa-pin')}catch(e){}
+if(!PIN){PIN=null;mode='new';ok=false}
+function dots(){$('dots').innerHTML=[0,1,2,3].map(function(i){return '<i class="'+(i<pin.length?'f':'')+'"></i>'}).join('')}
+function pinKey(k){
+  if(k==='x')pin=pin.slice(0,-1);else if(pin.length<4)pin+=k;
+  $('perr').textContent='';dots();
+  if(pin.length===4)step();
+}
+$('pad').innerHTML=['1','2','3','4','5','6','7','8','9','','0','x'].map(function(k){return k===''?'<span></span>':'<button data-a="pin" data-k="'+k+'" aria-label="'+(k==='x'?'Apagar':k)+'">'+(k==='x'?'⌫':k)+'</button>'}).join('');
+function msg(){var t={enter:'Digite seu PIN para entrar',old:'Digite o PIN atual',new:'Crie um PIN de 4 dígitos',confirm:'Digite o PIN novamente para confirmar'};$('lkmsg').textContent=t[mode];$('lkc').hidden=!ok}
+function done(){ok=true;try{sessionStorage.setItem('casa-ok','1')}catch(e){}$('lockscr').hidden=true;pin='';dots();render()}
+function step(){
+  var p=pin;pin='';setTimeout(dots,150);
+  if(mode==='enter'||mode==='old'){if(p===PIN){if(mode==='enter'){log('Entrada no painel');done()}else{mode='new';msg()}}else $('perr').textContent='PIN incorreto. Tente novamente.';return}
+  if(mode==='new'){first=p;mode='confirm';msg();return}
+  if(p===first){PIN=p;try{localStorage.setItem('casa-pin',p)}catch(e){}log('PIN definido');mode='enter';done();toast('PIN salvo')}else{$('perr').textContent='Os PINs não conferem. Crie novamente.';mode='new';msg()}
+}
+msg();dots();$('lockscr').hidden=ok;
+var MK='casa-mqtt',M={name:'casa-smart',host:'w8767ca9.ala.us-east-1.emqxsl.com',port:8084,path:'/mqtt',user:'RICARDO',pass:'',sub:'senai/#',pub:'senai/esp32/estado'},mc=null,ML=[],lastP=null,MF=['name','host','port','path','user','pass','sub','pub'];
+try{var m0=JSON.parse(localStorage.getItem(MK));if(m0)for(var mk in m0)M[mk]=m0[mk]}catch(e){}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function mset(t,c){$('mtxt').textContent=t;$('mdot').style.background=c}
+function mfill(){MF.forEach(function(k){$('m-'+k).value=M[k]})}
+function mlogR(){$('mlog').innerHTML=ML.length?ML.map(function(x){return '<div class="li"><div class="li-m">'+esc(x.x)+'</div><span class="st">'+new Date(x.t).toLocaleTimeString('pt-BR')+'</span></div>'}).join(''):'<p class="empty">Nenhuma mensagem ainda.</p>'}
+function msync(){var e=get('esp1');if(!e||!mc||!mc.connected||lastP===e.on)return;lastP=e.on;mc.publish(M.pub,e.on?'true':'false',{qos:1,retain:true})}
+function mconn(){
+  if(typeof mqtt==='undefined'){mset('Biblioteca MQTT não carregou (sem internet?)','#F87171');return}
+  MF.forEach(function(k){M[k]=$('m-'+k).value.trim()});
+  try{localStorage.setItem(MK,JSON.stringify(M))}catch(e){}
+  if(mc){try{mc.end(true)}catch(e){}}
+  mset('Conectando…','#FFC24A');
+  mc=mqtt.connect('wss://'+M.host+':'+M.port+M.path,{clientId:M.name+'_'+Math.random().toString(16).slice(2,8),username:M.user,password:M.pass,reconnectPeriod:4000,connectTimeout:10000,clean:true});
+  mc.on('connect',function(){mset('Conectado a '+M.host,'#34D399');mc.subscribe(M.sub,{qos:1});log('MQTT conectado')});
+  mc.on('reconnect',function(){mset('Reconectando…','#FFC24A')});
+  mc.on('close',function(){lastP=null;mset('Desconectado','#F87171')});
+  mc.on('error',function(er){mset('Erro: '+(er&&er.message||er),'#F87171')});
+  mc.on('message',function(t,p){var s=p.toString();ML.unshift({t:Date.now(),x:t+' → '+s});ML=ML.slice(0,20);mlogR();
+    if(t===M.pub){var e1=get('esp1'),v=/^(true|1|on|ligado)$/i.test(s);lastP=v;if(e1.on!==v){e1.on=v;save();render()}}});
+}
+mfill();mlogR();mset('Desconectado','#F87171');
+if(M.pass)mconn();
+renderScenes();render();
+})();
+</script>
+</body>
+</html>
